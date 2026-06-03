@@ -1,0 +1,105 @@
+{
+  "config": {
+    "token": "isy-hackathon-2026-default-token",
+    "version": "2.0.0",
+    "runtime": "Python 3.11 + FastAPI",
+    "database": "PostgreSQL",
+    "scripts_dir": "/opt/isyone/scripts"
+  },
+
+  "scripts": [
+    {
+      "id": 1,
+      "name": "Limpeza de Logs",
+      "filename": "cleanup_logs.sh",
+      "description": "Remove logs de cupons com mais de N dias do servidor do cliente.",
+      "parameters_hint": "[cliente] [dias]",
+      "is_active": true,
+      "created_at": "2026-05-10T09:00:00"
+    },
+    {
+      "id": 2,
+      "name": "Status dos Containers",
+      "filename": "check_containers.sh",
+      "description": "Verifica se os containers Docker de banco, app e proxy estão operacionais.",
+      "parameters_hint": "[cliente]",
+      "is_active": true,
+      "created_at": "2026-05-10T09:05:00"
+    },
+    {
+      "id": 3,
+      "name": "Provisionar Cliente",
+      "filename": "provisionar.sh",
+      "description": "Cria toda a estrutura de containers, Nginx e SSL para um novo cliente.",
+      "parameters_hint": "[cliente] [dominio] [porta]",
+      "is_active": true,
+      "created_at": "2026-05-11T14:20:00"
+    },
+    {
+      "id": 4,
+      "name": "Atualizar Agente iFood",
+      "filename": "update_agent.sh",
+      "description": "Atualiza o agente de impressão local do iFood para a versão mais recente.",
+      "parameters_hint": "[cliente]",
+      "is_active": false,
+      "created_at": "2026-05-15T11:00:00"
+    }
+  ],
+
+  "logs": [
+    {
+      "id": 12,
+      "script_name": "Provisionar Cliente",
+      "params": "[\"fmu\", \"fmu.isy.one\", \"8155\"]",
+      "status": "success",
+      "output": "CLIENTE fmu PROVISIONADO COM SUCESSO\nURL: https://fmu.isy.one\nDB: db_fmu",
+      "error": "",
+      "executed_at": "2026-06-01T22:14:00"
+    },
+    {
+      "id": 11,
+      "script_name": "Limpeza de Logs",
+      "params": "[\"restaurante_a\", \"30\"]",
+      "status": "success",
+      "output": "SUCESSO: logs com mais de 30 dias removidos.",
+      "error": "",
+      "executed_at": "2026-06-01T21:30:00"
+    },
+    {
+      "id": 10,
+      "script_name": "Status dos Containers",
+      "params": "[\"restaurante_b\"]",
+      "status": "error",
+      "output": "",
+      "error": "Container restaurante_b_db not found.",
+      "executed_at": "2026-06-01T20:55:00"
+    },
+    {
+      "id": 9,
+      "script_name": "Limpeza de Logs",
+      "params": "[\"todos\", \"7\"]",
+      "status": "success",
+      "output": "SUCESSO: logs com mais de 7 dias removidos.",
+      "error": "",
+      "executed_at": "2026-06-01T18:00:00"
+    },
+    {
+      "id": 8,
+      "script_name": "Status dos Containers",
+      "params": "[\"fmu\"]",
+      "status": "success",
+      "output": "Todos os serviços de fmu operacionais.",
+      "error": "",
+      "executed_at": "2026-06-01T17:42:00"
+    },
+    {
+      "id": 7,
+      "script_name": "Atualizar Agente iFood",
+      "params": "[\"restaurante_c\"]",
+      "status": "error",
+      "output": "",
+      "error": "Script inativo. Ative-o antes de executar.",
+      "executed_at": "2026-06-01T16:00:00"
+    }
+  ]
+}

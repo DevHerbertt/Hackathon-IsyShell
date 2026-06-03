@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  isyshell:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isyshell-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      SCRIPTS_DIR: /opt/isyone/scripts
+      DB_PATH: /data/isyshell.db
+      DEFAULT_TOKEN: isy-hackathon-2026-default-token
+      EXECUTION_TIMEOUT: "120"
+    volumes:
+      # Banco de dados SQLite persistente
+      - isyshell-data:/data
+      # Scripts do host montados como somente-leitura no container
+      # Em produção, aponte para o diretório real: /opt/isyone/scripts:/opt/isyone/scripts:ro
+      - ./scripts:/opt/isyone/scripts:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  isyshell-data:
+    driver: local
