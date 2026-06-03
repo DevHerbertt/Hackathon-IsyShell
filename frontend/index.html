@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IsyShell — Painel de Controle</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ═══════════ TOPBAR ═══════════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <a class="logo" href="#">
+        <div class="logo-mark"></div>
+        <div>
+          <div class="logo-text">IsyShell</div>
+          <div class="logo-version">v2.0.0 · Isy.One Infra</div>
+        </div>
+      </a>
+
+      <div class="topbar-sep"></div>
+
+      <div class="token-field">
+        <label>X-ISY-TOKEN</label>
+        <input type="password" id="tokenInput" placeholder="Cole seu token aqui..."/>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="status-dot">
+        <div class="dot"></div>
+        API ONLINE
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Menu</div>
+
+    <div class="nav-item active" onclick="showPanel('scripts')">
+      <span class="nav-icon">⚡</span>
+      Scripts
+      <span class="nav-badge" id="badge-scripts">0</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('execute')">
+      <span class="nav-icon">▶</span>
+      Executar
+    </div>
+    <div class="nav-item" onclick="showPanel('logs')">
+      <span class="nav-icon">📋</span>
+      Auditoria
+      <span class="nav-badge" id="badge-logs">0</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('settings')">
+      <span class="nav-icon">⚙</span>
+      Configurações
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      Runtime: <span>Python 3.11</span><br/>
+      DB: <span>PostgreSQL</span><br/>
+      Deploy: <span>Docker</span>
+    </div>
+  </aside>
+
+  <!-- ═══════════ CONTENT ═══════════ -->
+  <main class="content">
+
+    <!-- ── SCRIPTS PANEL ── -->
+    <section id="panel-scripts" class="panel active">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Scripts</div>
+          <div class="page-subtitle">Gerenciamento de rotinas de manutenção</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddForm()">+ Cadastrar</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-strip" id="scripts-stats">
+        <div class="stat-cell">
+          <div class="stat-val blue" id="stat-total-scripts">—</div>
+          <div class="stat-lbl">Total de Scripts</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val green" id="stat-active">—</div>
+          <div class="stat-lbl">Ativos</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val red" id="stat-inactive">—</div>
+          <div class="stat-lbl">Inativos</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val amber" id="stat-executions">—</div>
+          <div class="stat-lbl">Execuções</div>
+        </div>
+      </div>
+
+      <!-- Add form (hidden by default) -->
+      <div id="add-form" class="form-block hidden">
+        <h3>Cadastrar Novo Script</h3>
+        <div class="form-row">
+          <div class="field">
+            <label>Nome</label>
+            <input id="f-name" type="text" placeholder="Limpeza de Logs"/>
+          </div>
+          <div class="field">
+            <label>Arquivo (.sh)</label>
+            <input id="f-file" type="text" placeholder="cleanup_logs.sh"/>
+          </div>
+        </div>
+        <div class="form-row full mt1">
+          <div class="field">
+            <label>Descrição</label>
+            <input id="f-desc" type="text" placeholder="Descreva o que o script faz..."/>
+          </div>
+        </div>
+        <div class="form-row mt1">
+          <div class="field">
+            <label>Hint de Parâmetros</label>
+            <input id="f-hint" type="text" placeholder="[cliente] [dias]"/>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="f-status">
+              <option value="true">Ativo</option>
+              <option value="false">Inativo</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="addScript()">Salvar Script</button>
+          <button class="btn btn-ghost" onclick="closeAddForm()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Script cards -->
+      <div class="section-label">Scripts Cadastrados</div>
+      <div class="script-grid" id="script-grid"></div>
+
+    </section>
+
+    <!-- ── EXECUTE PANEL ── -->
+    <section id="panel-execute" class="panel">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Executar</div>
+          <div class="page-subtitle">Disparo seguro de rotinas via API</div>
+        </div>
+      </div>
+
+      <div class="exec-layout">
+        <!-- Left: config -->
+        <div class="exec-col">
+          <div class="exec-col-label">Configuração</div>
+
+          <div class="field mt2">
+            <label>Script</label>
+            <select id="exec-select" onchange="onSelectScript()">
+              <option value="">— Selecione —</option>
+            </select>
+          </div>
+
+          <div id="exec-hint" class="exec-hint hidden mt2"></div>
+
+          <div class="field mt2">
+            <label>Parâmetros (separados por espaço)</label>
+            <input id="exec-params" type="text" placeholder="Ex: fmu 30"/>
+          </div>
+
+          <div class="mt3">
+            <button class="btn btn-exec" id="exec-btn" onclick="runScript()">
+              ▶ Executar Agora
+            </button>
+          </div>
+
+          <div class="mt2" style="font-family:var(--mono);font-size:.6rem;color:var(--text-dim);line-height:1.8">
+            Segurança ativa:<br/>
+            · Token via X-Isy-Token<br/>
+            · Sanitização contra Command Injection<br/>
+            · Timeout: 120s<br/>
+            · Scripts inativos bloqueados
+          </div>
+        </div>
+
+        <!-- Right: terminal -->
+        <div class="exec-col" style="background:var(--bg)">
+          <div class="exec-col-label">Terminal Output</div>
+          <div class="terminal-bar">
+            <div class="terminal-bar-dot" style="background:#ff3355"></div>
+            <div class="terminal-bar-dot" style="background:#ffb800"></div>
+            <div class="terminal-bar-dot" style="background:#00ff88"></div>
+            <span style="font-family:var(--mono);font-size:.6rem;color:var(--text-dim);margin-left:.5rem">isyshell@server:~$</span>
+          </div>
+          <div class="terminal" id="exec-terminal"><span class="t-dim">// Aguardando execução...</span></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── LOGS PANEL ── -->
+    <section id="panel-logs" class="panel">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Auditoria</div>
+          <div class="page-subtitle">Histórico completo de execuções</div>
+        </div>
+        <button class="btn btn-ghost" onclick="fetchAll()">↻ Atualizar</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-strip">
+        <div class="stat-cell">
+          <div class="stat-val blue" id="log-total">—</div>
+          <div class="stat-lbl">Total</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val green" id="log-ok">—</div>
+          <div class="stat-lbl">Sucesso</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val red" id="log-err">—</div>
+          <div class="stat-lbl">Falhas</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val amber" id="log-rate">—</div>
+          <div class="stat-lbl">Taxa de Sucesso</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Horário</th>
+              <th>Script</th>
+              <th>Parâmetros</th>
+              <th>Status</th>
+              <th>Saída</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- ── SETTINGS PANEL ── -->
+    <section id="panel-settings" class="panel">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Configurações</div>
+          <div class="page-subtitle">Segurança e informações do sistema</div>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+
+        <!-- Token change -->
+        <div class="settings-card">
+          <h3>🔐 Alterar Token de API</h3>
+          <p style="font-size:.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:1rem">
+            O token é validado em todas as rotas protegidas via header
+            <code style="font-family:var(--mono);font-size:.68rem;background:var(--bg);padding:.1rem .3rem;border-radius:2px">X-Isy-Token</code>.
+            Troque-o regularmente em produção.
+          </p>
+          <div class="field">
+            <label>Novo Token (mín. 16 chars)</label>
+            <input id="new-token" type="text" placeholder="Novo token..."/>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="updateToken()">Salvar Token</button>
+          </div>
+        </div>
+
+        <!-- System info -->
+        <div class="settings-card">
+          <h3>ℹ️ Informações do Sistema</h3>
+          <div class="info-row">
+            <span class="key">Versão</span>
+            <span class="val" id="info-version">—</span>
+          </div>
+          <div class="info-row">
+            <span class="key">Runtime</span>
+            <span class="val" id="info-runtime">—</span>
+          </div>
+          <div class="info-row">
+            <span class="key">Banco</span>
+            <span class="val" id="info-db">—</span>
+          </div>
+          <div class="info-row">
+            <span class="key">Scripts Dir</span>
+            <span class="val" id="info-dir">—</span>
+          </div>
+          <div class="info-row">
+            <span class="key">Segurança</span>
+            <span class="val">X-Isy-Token + CI</span>
+          </div>
+          <div class="info-row">
+            <span class="key">Deploy</span>
+            <span class="val">Docker + Volumes</span>
+          </div>
+        </div>
+
+        <!-- Endpoints reference -->
+        <div class="settings-card" style="grid-column:1/-1">
+          <h3>📡 Referência de Endpoints</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem;margin-top:.5rem">
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--green)">GET</span>
+              <span style="color:var(--text-dim)">  /api/v1/scripts</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--blue)">POST</span>
+              <span style="color:var(--text-dim)"> /api/v1/scripts</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--amber)">PATCH</span>
+              <span style="color:var(--text-dim)"> /api/v1/scripts/{"{id}"}</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--red)">DELETE</span>
+              <span style="color:var(--text-dim)"> /api/v1/scripts/{"{id}"}</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--blue)">POST</span>
+              <span style="color:var(--text-dim)"> /api/v1/scripts/{"{id}"}/execute</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--green)">GET</span>
+              <span style="color:var(--text-dim)">  /api/v1/logs</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:.5rem .75rem">
+              <span style="color:var(--amber)">PUT</span>
+              <span style="color:var(--text-dim)">  /api/v1/admin/token</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ═══════════ JAVASCRIPT ═══════════ -->
+<script>
+// ────────────────────────────────────────────────────────────────
+// State
+// ────────────────────────────────────────────────────────────────
+let state = { scripts: [], logs: [], config: {} };
+
+// ────────────────────────────────────────────────────────────────
+// API helpers
+// ────────────────────────────────────────────────────────────────
+const API_BASE       = '';
+const DEFAULT_TOKEN  = 'isy-hackathon-2026-default-token';
+
+function getToken() {
+  return document.getElementById('tokenInput').value.trim()
+      || localStorage.getItem('isy_token')
+      || DEFAULT_TOKEN;
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Isy-Token': getToken() };
+}
+
+async function apiFetch(method, path, body) {
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers: authHeaders(),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ────────────────────────────────────────────────────────────────
+// Boot: conecta na API real
+// ────────────────────────────────────────────────────────────────
+async function boot() {
+  // Restaura token salvo
+  const saved = localStorage.getItem('isy_token') || DEFAULT_TOKEN;
+  document.getElementById('tokenInput').value = saved;
+
+  // Verifica conectividade e obtém info do sistema (endpoint público)
+  try {
+    const health = await fetch(API_BASE + '/health').then(r => r.json());
+    document.getElementById('info-version').textContent = health.version    || '—';
+    document.getElementById('info-runtime').textContent = health.runtime    || '—';
+    document.getElementById('info-db').textContent      = health.database   || '—';
+    document.getElementById('info-dir').textContent     = health.scripts_dir || '—';
+  } catch {
+    toast('API offline. Verifique se o servidor está rodando em localhost:8000.', 'error');
+    return;
+  }
+
+  await fetchAll();
+}
+
+async function fetchAll() {
+  try {
+    const [scripts, logs] = await Promise.all([
+      apiFetch('GET', '/api/v1/scripts'),
+      apiFetch('GET', '/api/v1/logs'),
+    ]);
+    state.scripts = scripts || [];
+    state.logs    = logs    || [];
+    renderAll();
+  } catch (e) {
+    toast('Erro ao carregar dados: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+function renderAll() {
+  renderScripts();
+  renderLogs();
+  populateExecSelect();
+  updateBadges();
+}
+
+// ────────────────────────────────────────────────────────────────
+// Panel navigation
+// ────────────────────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const idx   = ['scripts','execute','logs','settings'].indexOf(name);
+  if (idx > -1) items[idx].classList.add('active');
+}
+
+// ────────────────────────────────────────────────────────────────
+// Scripts
+// ────────────────────────────────────────────────────────────────
+function renderScripts() {
+  const grid = document.getElementById('script-grid');
+  const active   = state.scripts.filter(s => s.is_active).length;
+  const inactive = state.scripts.filter(s => !s.is_active).length;
+
+  document.getElementById('stat-total-scripts').textContent = state.scripts.length;
+  document.getElementById('stat-active').textContent        = active;
+  document.getElementById('stat-inactive').textContent      = inactive;
+  document.getElementById('stat-executions').textContent    = state.logs.length;
+
+  if (!state.scripts.length) {
+    grid.innerHTML = '<div style="padding:2rem;color:var(--text-dim);font-family:var(--mono);font-size:.75rem;text-align:center">Nenhum script cadastrado.</div>';
+    return;
+  }
+
+  grid.innerHTML = state.scripts.map(s => `
+    <div class="script-card">
+      <div class="script-card-top">
+        <div>
+          <div class="script-name">${esc(s.name)}</div>
+          <div class="script-file">📄 ${esc(s.filename)}</div>
+        </div>
+        <span class="badge ${s.is_active ? 'badge-active' : 'badge-inactive'}">
+          ${s.is_active ? '● Ativo' : '● Inativo'}
+        </span>
+      </div>
+      <div class="script-desc">${esc(s.description)}</div>
+      ${s.parameters_hint
+        ? `<div class="script-cmd">bash ${esc(s.filename)} ${esc(s.parameters_hint)}</div>`
+        : ''}
+      <div class="script-card-actions">
+        <button class="btn btn-ghost" onclick="toggleScript(${s.id})">
+          ${s.is_active ? '⏸ Desativar' : '▶ Ativar'}
+        </button>
+        <button class="btn btn-danger" onclick="deleteScript(${s.id})">✕ Remover</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function toggleScript(id) {
+  const s = state.scripts.find(x => x.id === id);
+  if (!s) return;
+  try {
+    const updated = await apiFetch('PATCH', `/api/v1/scripts/${id}`, { is_active: !s.is_active });
+    Object.assign(s, updated);
+    renderScripts();
+    populateExecSelect();
+    updateBadges();
+    toast(updated.is_active ? `"${updated.name}" ativado.` : `"${updated.name}" desativado.`);
+  } catch (e) {
+    toast('Erro ao atualizar: ' + e.message, 'error');
+  }
+}
+
+async function deleteScript(id) {
+  const s = state.scripts.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(`Remover "${s.name}"?`)) return;
+  try {
+    await apiFetch('DELETE', `/api/v1/scripts/${id}`);
+    state.scripts = state.scripts.filter(x => x.id !== id);
+    renderScripts();
+    populateExecSelect();
+    updateBadges();
+    toast('Script removido.');
+  } catch (e) {
+    toast('Erro ao remover: ' + e.message, 'error');
+  }
+}
+
+// Add form
+function openAddForm()  { document.getElementById('add-form').classList.remove('hidden'); }
+function closeAddForm() { document.getElementById('add-form').classList.add('hidden'); }
+
+async function addScript() {
+  const name   = document.getElementById('f-name').value.trim();
+  const file   = document.getElementById('f-file').value.trim();
+  const desc   = document.getElementById('f-desc').value.trim();
+  const hint   = document.getElementById('f-hint').value.trim();
+  const active = document.getElementById('f-status').value === 'true';
+
+  if (!name || !file || !desc) { toast('Preencha nome, arquivo e descrição.', 'warn'); return; }
+
+  try {
+    const created = await apiFetch('POST', '/api/v1/scripts', {
+      name, filename: file, description: desc, parameters_hint: hint, is_active: active,
+    });
+    state.scripts.push(created);
+    closeAddForm();
+    ['f-name','f-file','f-desc','f-hint'].forEach(id => document.getElementById(id).value = '');
+    renderScripts();
+    populateExecSelect();
+    updateBadges();
+    toast(`Script "${created.name}" cadastrado!`);
+  } catch (e) {
+    toast('Erro ao cadastrar: ' + e.message, 'error');
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Execute
+// ────────────────────────────────────────────────────────────────
+function populateExecSelect() {
+  const sel = document.getElementById('exec-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Selecione —</option>';
+  state.scripts.filter(s => s.is_active).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = `${s.name} (${s.filename})`;
+    if (String(s.id) === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function onSelectScript() {
+  const id = document.getElementById('exec-select').value;
+  const s  = state.scripts.find(x => String(x.id) === id);
+  const el = document.getElementById('exec-hint');
+  if (s && s.parameters_hint) {
+    el.textContent = `bash ${s.filename} ${s.parameters_hint}`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+async function runScript() {
+  const id = document.getElementById('exec-select').value;
+  if (!id) { toast('Selecione um script.', 'warn'); return; }
+
+  const s = state.scripts.find(x => String(x.id) === id);
+  if (!s) return;
+
+  const rawParams = document.getElementById('exec-params').value.trim();
+  const params    = rawParams ? rawParams.split(/\s+/) : [];
+
+  const btn = document.getElementById('exec-btn');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spin"></span> Executando...';
+
+  const terminal = document.getElementById('exec-terminal');
+  terminal.innerHTML = `<span class="t-dim">$ bash ${esc(s.filename)} ${esc(params.join(' '))}\n\n⏳ Aguardando resposta da API...</span>`;
+
+  try {
+    const result = await apiFetch('POST', `/api/v1/scripts/${id}/execute`, { params });
+    const ts = new Date(result.executed_at).toLocaleString('pt-BR');
+
+    if (result.status === 'success') {
+      terminal.innerHTML =
+        `<span class="t-dim">[${ts}] Iniciando execução: ${esc(s.filename)}</span>\n\n` +
+        `<span class="t-bright">========================================</span>\n` +
+        `<span class="t-bright"> IsyShell — ${esc(s.name)}</span>\n` +
+        `<span class="t-bright">========================================</span>\n` +
+        `Parâmetros : <span class="t-amber">${esc(params.join(' ') || '—')}</span>\n` +
+        `Duração    : <span class="t-dim">${result.duration_ms}ms</span>\n` +
+        `----------------------------------------\n` +
+        esc(result.output) +
+        `\n\n<span class="t-green">✔ STATUS: SUCCESS · exit code 0</span>`;
+    } else {
+      terminal.innerHTML =
+        `<span class="t-red">✖ STATUS: ${esc(result.status.toUpperCase())}</span>\n\n` +
+        `<span class="t-dim">stderr:</span>\n` +
+        `<span class="t-red">${esc(result.error)}</span>\n` +
+        `<span class="t-dim">[${ts}] Duração: ${result.duration_ms}ms</span>`;
+    }
+
+    // Atualiza estado local de logs
+    state.logs.unshift({
+      id:          result.id,
+      script_id:   s.id,
+      script_name: s.name,
+      params:      JSON.stringify(params),
+      status:      result.status,
+      output:      result.output,
+      error:       result.error,
+      duration_ms: result.duration_ms,
+      executed_at: result.executed_at,
+    });
+    updateBadges();
+    toast(
+      result.status === 'success' ? 'Execução concluída!' : `Execução retornou ${result.status}.`,
+      result.status === 'success' ? 'ok' : 'error'
+    );
+  } catch (e) {
+    terminal.innerHTML = `<span class="t-red">✖ ERRO DE COMUNICAÇÃO\n${esc(e.message)}</span>`;
+    toast('Erro na execução: ' + e.message, 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '▶ Executar Agora';
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Logs
+// ────────────────────────────────────────────────────────────────
+function renderLogs() {
+  const total   = state.logs.length;
+  const ok      = state.logs.filter(l => l.status === 'success').length;
+  const err     = state.logs.filter(l => l.status !== 'success').length;
+  const rate    = total > 0 ? Math.round((ok / total) * 100) + '%' : '—';
+
+  document.getElementById('log-total').textContent = total;
+  document.getElementById('log-ok').textContent    = ok;
+  document.getElementById('log-err').textContent   = err;
+  document.getElementById('log-rate').textContent  = rate;
+
+  const tbody = document.getElementById('log-tbody');
+
+  if (!state.logs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-dim);font-family:var(--mono);font-size:.75rem">Nenhum log registrado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = state.logs.map(l => {
+    const cls   = l.status === 'success' ? 'badge-success' : l.status === 'timeout' ? 'badge-timeout' : 'badge-error';
+    const out   = esc(l.output || l.error || '—');
+    const prms  = esc(tryParseParams(l.params));
+    const dt    = fmtDate(l.executed_at);
+    return `
+      <tr>
+        <td class="mono dim">#${l.id}</td>
+        <td class="mono">${dt}</td>
+        <td>${esc(l.script_name)}</td>
+        <td class="mono" style="color:var(--amber)">${prms || '—'}</td>
+        <td><span class="badge ${cls}">${l.status}</span></td>
+        <td class="log-output-cell" title="${out}">${out}</td>
+      </tr>`;
+  }).join('');
+}
+
+function tryParseParams(raw) {
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.join(' ') : raw;
+  } catch { return raw || ''; }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Settings
+// ────────────────────────────────────────────────────────────────
+async function updateToken() {
+  const val = document.getElementById('new-token').value.trim();
+  if (val.length < 16) { toast('Token deve ter ao menos 16 caracteres.', 'warn'); return; }
+  try {
+    await apiFetch('PUT', '/api/v1/admin/token', { token: val });
+    document.getElementById('tokenInput').value = val;
+    localStorage.setItem('isy_token', val);
+    document.getElementById('new-token').value = '';
+    toast('Token atualizado com sucesso!');
+  } catch (e) {
+    toast('Erro ao atualizar token: ' + e.message, 'error');
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────
+function updateBadges() {
+  document.getElementById('badge-scripts').textContent = state.scripts.length;
+  document.getElementById('badge-logs').textContent    = state.logs.length;
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  try {
+    const d = new Date(s.endsWith('Z') ? s : s + 'Z');
+    return d.toLocaleString('pt-BR');
+  } catch { return s; }
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'show' + (type === 'error' ? ' error' : type === 'warn' ? ' warn' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Init
+// ────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
